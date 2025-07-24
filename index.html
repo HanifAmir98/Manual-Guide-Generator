@@ -134,7 +134,6 @@
     <label for="manualSelect"><b>Select Manual:</b></label>
     <select id="manualSelect" style="width:70%;margin:0 8px 16px 8px;"></select>
     <button id="openManualBtn">Open</button>
-    <button id="exportPdfBtn">Export as PDF</button>
     <button id="newManualBtn">New Manual</button>
   </div>
   <div class="manual-form" id="manualForm" style="display:none;">
@@ -161,6 +160,7 @@
       <button id="manualViewGear" title="Edit Manual" style="background:none;border:none;cursor:pointer;font-size:1.5em;padding:0 8px;line-height:1;">
         <span style="font-size:1.5em;">&#9881;</span>
       </button>
+      <button id="exportPdfBtn" style="background:#28a745;color:#fff;padding:8px 16px;border-radius:4px;border:none;cursor:pointer;">Export as PDF</button>
     </div>
     <div id="manualViewList"></div>
     <button id="manualViewBackBtn" style="margin-top:16px;background:#aaa;">Back to Main</button>
@@ -519,44 +519,46 @@
         updateManualDropdown();
       }
     };
-    exportPdfBtn.onclick = function() {
-      if (!currentManualName) {
-        alert('No manual is currently open.');
-        return;
-      }
-      const data = localStorage.getItem('manual_' + currentManualName);
-      if (!data) {
-        alert('Manual not found!');
-        return;
-      }
-      let arr = JSON.parse(data);
-      let manualArr, manualName;
-      if (Array.isArray(arr)) {
-        manualArr = arr;
-        manualName = arr.manualName || currentManualName;
-      } else {
-        manualArr = [];
-        manualName = currentManualName;
-      }
-      const doc = new window.jspdf.jsPDF();
-      let y = 20;
-      doc.setFontSize(18);
-      doc.text(manualName, 10, y);
-      y += 10;
-      doc.setFontSize(12);
-      manualArr.forEach((item, idx) => {
-        doc.text(`${idx + 1}. ${item.title}`, 10, y);
-        y += 7;
-        doc.text(item.instruction, 14, y);
-        y += 10;
-        // Images are not included in this simple export
-        if (y > 270) {
-          doc.addPage();
-          y = 20;
+    document.getElementById('manualView').addEventListener('click', function(e) {
+      if (e.target && e.target.id === 'exportPdfBtn') {
+        if (!currentManualName) {
+          alert('No manual is currently open.');
+          return;
         }
-      });
-      doc.save(`${manualName}.pdf`);
-    };
+        const data = localStorage.getItem('manual_' + currentManualName);
+        if (!data) {
+          alert('Manual not found!');
+          return;
+        }
+        let arr = JSON.parse(data);
+        let manualArr, manualName;
+        if (Array.isArray(arr)) {
+          manualArr = arr;
+          manualName = arr.manualName || currentManualName;
+        } else {
+          manualArr = [];
+          manualName = currentManualName;
+        }
+        const doc = new window.jspdf.jsPDF();
+        let y = 20;
+        doc.setFontSize(18);
+        doc.text(manualName, 10, y);
+        y += 10;
+        doc.setFontSize(12);
+        manualArr.forEach((item, idx) => {
+          doc.text(`${idx + 1}. ${item.title}`, 10, y);
+          y += 7;
+          doc.text(item.instruction, 14, y);
+          y += 10;
+          // Images are not included in this simple export
+          if (y > 270) {
+            doc.addPage();
+            y = 20;
+          }
+        });
+        doc.save(`${manualName}.pdf`);
+      }
+    });
 
     // Allow unlocking for editing by returning to main page
     window.showMainPage = showMainPage;
