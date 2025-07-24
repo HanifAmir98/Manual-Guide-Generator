@@ -154,16 +154,19 @@
       </div>
     </div>
   </div>
-  <div class="manual-view" id="manualView" style="display:none;max-width:600px;margin:20px auto;background:#fff;padding:24px;border-radius:8px;box-shadow:0 2px 8px #0001;position:relative;">
-    <div id="manualViewHeader" style="display:flex;align-items:center;justify-content:space-between;">
-      <h2 id="manualViewName" style="margin:0;"></h2>
-      <button id="manualViewGear" title="Edit Manual" style="background:none;border:none;cursor:pointer;font-size:1.5em;padding:0 8px;line-height:1;">
-        <span style="font-size:1.5em;">&#9881;</span>
-      </button>
-      <button id="exportPdfBtn" style="background:#28a745;color:#fff;padding:8px 16px;border-radius:4px;border:none;cursor:pointer;">Export as PDF</button>
+  <div class="manual-view" id="manualView" style="display:none;max-width:700px;margin:32px auto 0 auto;background:#fff;padding:36px 32px 32px 32px;border-radius:14px;box-shadow:0 4px 24px #0002;position:relative;">
+    <div id="manualViewHeader" style="margin-bottom:28px;">
+      <div style="background:#f3f7ff;border-radius:10px;padding:18px 28px 16px 28px;box-shadow:0 2px 8px #007bff11;margin-bottom:0;display:flex;align-items:center;">
+        <h2 id="manualViewName" style="margin:0;font-size:2em;font-weight:700;letter-spacing:1px;color:#1a237e;">Manual Name</h2>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:16px;margin-top:10px;">
+        <button id="manualViewEditBtn" style="background:#ffc107;color:#333;padding:10px 28px;border-radius:6px;border:none;cursor:pointer;font-size:1.08em;box-shadow:0 2px 8px #0001;transition:background 0.2s;font-weight:600;">Edit</button>
+        <button id="exportPdfBtn" style="background:#28a745;color:#fff;padding:10px 28px;border-radius:6px;border:none;cursor:pointer;font-size:1.08em;box-shadow:0 2px 8px #0001;transition:background 0.2s;font-weight:600;">Export as PDF</button>
+      </div>
     </div>
+    <hr style="border:none;border-top:1.5px solid #e0e0e0;margin-bottom:28px;">
     <div id="manualViewList"></div>
-    <button id="manualViewBackBtn" style="margin-top:16px;background:#aaa;">Back to Main</button>
+    <button id="manualViewBackBtn" style="margin-top:32px;background:#aaa;padding:10px 28px;border-radius:6px;font-size:1.08em;font-weight:600;">Back to Main</button>
   </div>
   <div id="manualViewModal" class="manual-view-modal" style="display:none;"><img id="manualViewModalImg" src="" alt="Manual Zoom" /></div>
   <div class="manual-list" id="manualList" style="display:none;"></div>
@@ -192,7 +195,7 @@
     const manualView = document.getElementById('manualView');
     const manualViewName = document.getElementById('manualViewName');
     const manualViewList = document.getElementById('manualViewList');
-    const manualViewGear = document.getElementById('manualViewGear');
+    const manualViewEditBtn = document.getElementById('manualViewEditBtn');
     const manualViewBackBtn = document.getElementById('manualViewBackBtn');
     const manualViewModal = document.getElementById('manualViewModal');
     const manualViewModalImg = document.getElementById('manualViewModalImg');
@@ -280,6 +283,8 @@
       updateBtn.style.display = 'none';
       cancelEditBtn.style.display = 'none';
       editIndex = null;
+      delete imageInput.dataset.pasted;
+      hidePastedImagePreview();
     }
 
     function setFormLock(state) {
@@ -295,7 +300,27 @@
       renderManual();
     }
 
-    // Allow pasting images into the instruction input
+    // Add a preview for pasted images
+    let pastedImagePreview = null;
+    function showPastedImagePreview(dataUrl) {
+      if (!pastedImagePreview) {
+        pastedImagePreview = document.createElement('img');
+        pastedImagePreview.style.maxWidth = '120px';
+        pastedImagePreview.style.maxHeight = '120px';
+        pastedImagePreview.style.display = 'block';
+        pastedImagePreview.style.margin = '8px 0';
+        instructionInput.parentNode.insertBefore(pastedImagePreview, imageInput);
+      }
+      pastedImagePreview.src = dataUrl;
+      pastedImagePreview.style.display = 'block';
+    }
+    function hidePastedImagePreview() {
+      if (pastedImagePreview) {
+        pastedImagePreview.style.display = 'none';
+        pastedImagePreview.src = '';
+      }
+    }
+
     instructionInput.addEventListener('paste', function(event) {
       if (event.clipboardData && event.clipboardData.items) {
         for (let i = 0; i < event.clipboardData.items.length; i++) {
@@ -304,12 +329,9 @@
             const file = item.getAsFile();
             const reader = new FileReader();
             reader.onload = function(e) {
-              // Set the image input's file and preview
-              // Since we can't set input.files directly, store the image as a data URL
               imageInput.value = '';
               imageInput.dataset.pasted = e.target.result;
-              // Optionally, show a preview or notify the user
-              // You can also auto-fill the image for the next add/update
+              showPastedImagePreview(e.target.result);
             };
             reader.readAsDataURL(file);
             event.preventDefault();
@@ -319,7 +341,6 @@
       }
     });
 
-    // When adding or updating, check for pasted image
     function getCurrentImage() {
       if (imageInput.files && imageInput.files[0]) {
         return new Promise(resolve => {
@@ -344,6 +365,7 @@
       renderManual();
       resetForm();
       delete imageInput.dataset.pasted;
+      hidePastedImagePreview();
     }
 
     function startEdit(idx) {
@@ -371,6 +393,7 @@
       renderManual();
       resetForm();
       delete imageInput.dataset.pasted;
+      hidePastedImagePreview();
     }
 
     function deleteInstruction(idx) {
@@ -532,7 +555,7 @@
     updateBtn.onclick = updateInstruction;
     cancelEditBtn.onclick = resetForm;
     backBtn.onclick = showMainPage;
-    manualViewGear.onclick = function() {
+    manualViewEditBtn.onclick = function() {
       // Go to edit mode for the current manual
       openManual(currentManualName);
       manualView.style.display = 'none';
