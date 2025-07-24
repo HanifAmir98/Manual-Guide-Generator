@@ -295,24 +295,55 @@
       renderManual();
     }
 
-    function addInstruction() {
+    // Allow pasting images into the instruction input
+    instructionInput.addEventListener('paste', function(event) {
+      if (event.clipboardData && event.clipboardData.items) {
+        for (let i = 0; i < event.clipboardData.items.length; i++) {
+          const item = event.clipboardData.items[i];
+          if (item.type.indexOf('image') !== -1) {
+            const file = item.getAsFile();
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              // Set the image input's file and preview
+              // Since we can't set input.files directly, store the image as a data URL
+              imageInput.value = '';
+              imageInput.dataset.pasted = e.target.result;
+              // Optionally, show a preview or notify the user
+              // You can also auto-fill the image for the next add/update
+            };
+            reader.readAsDataURL(file);
+            event.preventDefault();
+            break;
+          }
+        }
+      }
+    });
+
+    // When adding or updating, check for pasted image
+    function getCurrentImage() {
+      if (imageInput.files && imageInput.files[0]) {
+        return new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onload = function(e) { resolve(e.target.result); };
+          reader.readAsDataURL(imageInput.files[0]);
+        });
+      } else if (imageInput.dataset.pasted) {
+        return Promise.resolve(imageInput.dataset.pasted);
+      } else {
+        return Promise.resolve(null);
+      }
+    }
+
+    async function addInstruction() {
       if (locked) return;
       const title = titleInput.value.trim();
       const instruction = instructionInput.value.trim();
       if (!title || !instruction) return;
-      if (imageInput.files && imageInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          manual.push({ title, instruction, image: e.target.result });
-          renderManual();
-          resetForm();
-        };
-        reader.readAsDataURL(imageInput.files[0]);
-      } else {
-        manual.push({ title, instruction, image: null });
-        renderManual();
-        resetForm();
-      }
+      const image = await getCurrentImage();
+      manual.push({ title, instruction, image });
+      renderManual();
+      resetForm();
+      delete imageInput.dataset.pasted;
     }
 
     function startEdit(idx) {
@@ -326,24 +357,20 @@
       cancelEditBtn.style.display = '';
     }
 
-    function updateInstruction() {
+    async function updateInstruction() {
       if (locked || editIndex === null) return;
       const title = titleInput.value.trim();
       const instruction = instructionInput.value.trim();
       if (!title || !instruction) return;
-      if (imageInput.files && imageInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          manual[editIndex] = { title, instruction, image: e.target.result };
-          renderManual();
-          resetForm();
-        };
-        reader.readAsDataURL(imageInput.files[0]);
+      const image = await getCurrentImage();
+      if (image !== null) {
+        manual[editIndex] = { title, instruction, image };
       } else {
         manual[editIndex] = { ...manual[editIndex], title, instruction };
-        renderManual();
-        resetForm();
       }
+      renderManual();
+      resetForm();
+      delete imageInput.dataset.pasted;
     }
 
     function deleteInstruction(idx) {
@@ -539,19 +566,40 @@
           manualArr = [];
           manualName = currentManualName;
         }
-        const doc = new window.jspdf.jsPDF();
+        const doc = new window.jspdf.jsPDF({format: 'a4', unit: 'mm'});
+        const pageWidth = 210; // A4 width in mm
+        const pageHeight = 297; // A4 height in mm
+        const marginLeft = 14;
+        const maxImgWidth = 100; // reduced max width
+        const maxImgHeight = 80; // reduced max height
         let y = 20;
         doc.setFontSize(18);
-        doc.text(manualName, 10, y);
+        doc.text(manualName, marginLeft, y);
         y += 10;
         doc.setFontSize(12);
         manualArr.forEach((item, idx) => {
-          doc.text(`${idx + 1}. ${item.title}`, 10, y);
+          doc.text(`${idx + 1}. ${item.title}`, marginLeft, y);
           y += 7;
-          doc.text(item.instruction, 14, y);
+          doc.text(item.instruction, marginLeft + 4, y);
           y += 10;
-          // Images are not included in this simple export
-          if (y > 270) {
+          if (item.image) {
+            let imgProps = doc.getImageProperties(item.image);
+            let imgWidth = imgProps.width;
+            let imgHeight = imgProps.height;
+            // Scale to fit A4 width and max height, keep aspect ratio
+            let scale = Math.min(maxImgWidth / imgWidth, maxImgHeight / imgHeight, 1);
+            let pdfWidth = imgWidth * scale;
+            let pdfHeight = imgHeight * scale;
+            // Center image horizontally
+            let x = (pageWidth - pdfWidth) / 2;
+            if (y + pdfHeight > pageHeight - 20) {
+              doc.addPage();
+              y = 20;
+            }
+            doc.addImage(item.image, 'JPEG', x, y, pdfWidth, pdfHeight);
+            y += pdfHeight + 5;
+          }
+          if (y > pageHeight - 20) {
             doc.addPage();
             y = 20;
           }
