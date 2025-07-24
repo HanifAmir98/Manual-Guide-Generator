@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual Guide Creator</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; background: #f9f9f9; }
+    h1 { text-align: center; }
+    .manual-form, .manual-list { max-width: 600px; margin: 20px auto; background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+    .manual-form input[type="text"], .manual-form textarea { width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 4px; }
+    .manual-form input[type="file"] { margin-bottom: 12px; }
+    .manual-form button { padding: 8px 16px; border: none; background: #007bff; color: #fff; border-radius: 4px; cursor: pointer; }
+    .manual-form button:disabled { background: #aaa; }
+    .manual-list .instruction { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 24px; background: #f5f5f5; padding: 16px; border-radius: 6px; }
+    .manual-list img { max-width: 120px; max-height: 120px; border-radius: 4px; border: 1px solid #ddd; }
+    .manual-list .actions { margin-left: auto; display: flex; flex-direction: column; gap: 8px; }
+    .manual-list .actions button { background: #28a745; }
+    .manual-list .actions .delete { background: #dc3545; }
+    .manual-list .actions .edit { background: #ffc107; color: #333; }
+    .manual-list .actions button { color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+    .manual-list .actions .edit { color: #333; }
+    .manual-list .actions .delete { color: #fff; }
+    .manual-list .title { font-weight: bold; font-size: 1.1em; margin-bottom: 4px; }
+    .manual-list .instruction-text { margin-bottom: 8px; }
+    .manual-view img {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      margin-top: 8px;
+      cursor: zoom-in;
+      transition: box-shadow 0.2s;
+    }
+    .manual-view-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .manual-view-modal img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 8px;
+      box-shadow: 0 4px 32px #0008;
+      cursor: zoom-out;
+    }
+    .manual-view-step {
+      background: #f7faff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px #0001;
+      padding: 18px 20px 18px 20px;
+      margin-bottom: 28px;
+      border-left: 6px solid #007bff;
+      position: relative;
+      transition: box-shadow 0.2s;
+    }
+    .manual-view-step-number {
+      position: absolute;
+      left: -32px;
+      top: 18px;
+      background: #007bff;
+      color: #fff;
+      font-weight: bold;
+      font-size: 1.1em;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px #007bff22;
+    }
+    .manual-view .title {
+      font-size: 1.15em;
+      font-weight: bold;
+      margin-bottom: 6px;
+      color: #222;
+    }
+    .manual-view .instruction-text {
+      margin-bottom: 10px;
+      color: #444;
+      font-size: 1em;
+    }
+    .manual-view h2 {
+      font-size: 1.4em;
+      color: #007bff;
+      letter-spacing: 1px;
+    }
+    .manual-view #manualViewList {
+      margin-top: 24px;
+    }
+    .manual-view #manualViewBackBtn {
+      margin-top: 24px;
+      background: #007bff;
+      color: #fff;
+      border-radius: 6px;
+      font-size: 1em;
+      padding: 8px 20px;
+      border: none;
+      cursor: pointer;
+    }
+    .manual-view #manualViewBackBtn:hover {
+      background: #0056b3;
+    }
+    .manual-view #manualViewGear {
+      color: #007bff;
+    }
+    .manual-form input, .manual-form textarea {
+      font-size: 1em;
+    }
+    .manual-form {
+      background: #f7faff;
+    }
+    .manual-form-buttons button {
+      font-size: 1em;
+    }
+    .manual-form input[type="text"]#manualNameInput {
+      background: #eaf4ff;
+      border: 1.5px solid #b6d4fe;
+    }
+    .manual-form input[type="text"]#manualNameInput:focus {
+      border: 1.5px solid #007bff;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Manual Guide Creator</h1>
+  <div id="mainPage" style="max-width:600px;margin:20px auto;background:#fff;padding:24px;border-radius:8px;box-shadow:0 2px 8px #0001;">
+    <label for="manualSelect"><b>Select Manual:</b></label>
+    <select id="manualSelect" style="width:70%;margin:0 8px 16px 8px;"></select>
+    <button id="openManualBtn">Open</button>
+    <button id="newManualBtn">New Manual</button>
+  </div>
+  <div class="manual-form" id="manualForm" style="display:none;">
+    <input type="text" id="manualNameInput" placeholder="Manual Name" required style="font-weight:bold;font-size:1.1em;margin-bottom:16px;" />
+    <input type="text" id="titleInput" placeholder="Instruction Title" required />
+    <textarea id="instructionInput" rows="3" placeholder="Instruction" required></textarea>
+    <input type="file" id="imageInput" accept="image/*" />
+    <div class="manual-form-buttons" style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px;">
+      <div style="display:flex;gap:8px;">
+        <button id="addBtn">Add Instruction</button>
+        <button id="updateBtn" style="display:none;">Update Instruction</button>
+        <button id="cancelEditBtn" style="display:none; background:#aaa;">Cancel Edit</button>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button id="saveLockBtn" style="background:#333;">Save & Lock</button>
+        <button id="deleteManualBtn" style="background:#dc3545;color:#fff;">Delete Manual</button>
+        <button id="backBtn" style="background:#aaa;">Back to Main</button>
+      </div>
+    </div>
+  </div>
+  <div class="manual-view" id="manualView" style="display:none;max-width:600px;margin:20px auto;background:#fff;padding:24px;border-radius:8px;box-shadow:0 2px 8px #0001;position:relative;">
+    <div id="manualViewHeader" style="display:flex;align-items:center;justify-content:space-between;">
+      <h2 id="manualViewName" style="margin:0;"></h2>
+      <button id="manualViewGear" title="Edit Manual" style="background:none;border:none;cursor:pointer;font-size:1.5em;padding:0 8px;line-height:1;">
+        <span style="font-size:1.5em;">&#9881;</span>
+      </button>
+    </div>
+    <div id="manualViewList"></div>
+    <button id="manualViewBackBtn" style="margin-top:16px;background:#aaa;">Back to Main</button>
+  </div>
+  <div id="manualViewModal" class="manual-view-modal" style="display:none;"><img id="manualViewModalImg" src="" alt="Manual Zoom" /></div>
+  <div class="manual-list" id="manualList" style="display:none;"></div>
+  <script>
+    let manual = [];
+    let editIndex = null;
+    let currentManualName = null;
+    let locked = false;
+
+    const titleInput = document.getElementById('titleInput');
+    const instructionInput = document.getElementById('instructionInput');
+    const imageInput = document.getElementById('imageInput');
+    const addBtn = document.getElementById('addBtn');
+    const updateBtn = document.getElementById('updateBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const saveLockBtn = document.getElementById('saveLockBtn');
+    const manualList = document.getElementById('manualList');
+    const manualForm = document.getElementById('manualForm');
+    const mainPage = document.getElementById('mainPage');
+    const manualSelect = document.getElementById('manualSelect');
+    const openManualBtn = document.getElementById('openManualBtn');
+    const newManualBtn = document.getElementById('newManualBtn');
+    const manualNameInput = document.getElementById('manualNameInput');
+    const backBtn = document.getElementById('backBtn');
+    const manualView = document.getElementById('manualView');
+    const manualViewName = document.getElementById('manualViewName');
+    const manualViewList = document.getElementById('manualViewList');
+    const manualViewGear = document.getElementById('manualViewGear');
+    const manualViewBackBtn = document.getElementById('manualViewBackBtn');
+    const manualViewModal = document.getElementById('manualViewModal');
+    const manualViewModalImg = document.getElementById('manualViewModalImg');
+    const deleteManualBtn = document.getElementById('deleteManualBtn');
+
+    function updateManualDropdown() {
+      manualSelect.innerHTML = '';
+      // Get all manuals and parse their names
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('manual_'));
+      const manuals = keys.map(k => {
+        try {
+          const arr = JSON.parse(localStorage.getItem(k));
+          return { key: k, name: arr && arr.manualName ? arr.manualName : k.replace('manual_', '') };
+        } catch { return { key: k, name: k.replace('manual_', '') }; }
+      });
+      if (manuals.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '-- No Manuals Saved --';
+        manualSelect.appendChild(opt);
+      } else {
+        manuals.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.key;
+          opt.textContent = m.name;
+          manualSelect.appendChild(opt);
+        });
+      }
+    }
+
+    function renderManual() {
+      manualList.innerHTML = '';
+      manual.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = 'instruction';
+        const content = document.createElement('div');
+        content.innerHTML = `<div class=\"title\">${item.title}</div><div class=\"instruction-text\">${item.instruction}</div>`;
+        div.appendChild(content);
+        if (item.image) {
+          const img = document.createElement('img');
+          img.src = item.image;
+          div.appendChild(img);
+        }
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        // Up button
+        const upBtn = document.createElement('button');
+        upBtn.textContent = '↑';
+        upBtn.title = 'Move Up';
+        upBtn.disabled = idx === 0 || locked;
+        upBtn.onclick = () => moveInstruction(idx, -1);
+        actions.appendChild(upBtn);
+        // Down button
+        const downBtn = document.createElement('button');
+        downBtn.textContent = '↓';
+        downBtn.title = 'Move Down';
+        downBtn.disabled = idx === manual.length - 1 || locked;
+        downBtn.onclick = () => moveInstruction(idx, 1);
+        actions.appendChild(downBtn);
+        // Edit button
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.className = 'edit';
+        editBtn.disabled = locked;
+        editBtn.onclick = () => startEdit(idx);
+        actions.appendChild(editBtn);
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.className = 'delete';
+        deleteBtn.disabled = locked;
+        deleteBtn.onclick = () => deleteInstruction(idx);
+        actions.appendChild(deleteBtn);
+        div.appendChild(actions);
+        manualList.appendChild(div);
+      });
+    }
+
+    function resetForm() {
+      titleInput.value = '';
+      instructionInput.value = '';
+      imageInput.value = '';
+      addBtn.style.display = '';
+      updateBtn.style.display = 'none';
+      cancelEditBtn.style.display = 'none';
+      editIndex = null;
+    }
+
+    function setFormLock(state) {
+      locked = state;
+      manualNameInput.disabled = locked;
+      titleInput.disabled = locked;
+      instructionInput.disabled = locked;
+      imageInput.disabled = locked;
+      addBtn.disabled = locked;
+      updateBtn.disabled = locked;
+      cancelEditBtn.disabled = locked;
+      saveLockBtn.disabled = locked;
+      renderManual();
+    }
+
+    function addInstruction() {
+      if (locked) return;
+      const title = titleInput.value.trim();
+      const instruction = instructionInput.value.trim();
+      if (!title || !instruction) return;
+      if (imageInput.files && imageInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          manual.push({ title, instruction, image: e.target.result });
+          renderManual();
+          resetForm();
+        };
+        reader.readAsDataURL(imageInput.files[0]);
+      } else {
+        manual.push({ title, instruction, image: null });
+        renderManual();
+        resetForm();
+      }
+    }
+
+    function startEdit(idx) {
+      if (locked) return;
+      editIndex = idx;
+      const item = manual[idx];
+      titleInput.value = item.title;
+      instructionInput.value = item.instruction;
+      addBtn.style.display = 'none';
+      updateBtn.style.display = '';
+      cancelEditBtn.style.display = '';
+    }
+
+    function updateInstruction() {
+      if (locked || editIndex === null) return;
+      const title = titleInput.value.trim();
+      const instruction = instructionInput.value.trim();
+      if (!title || !instruction) return;
+      if (imageInput.files && imageInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          manual[editIndex] = { title, instruction, image: e.target.result };
+          renderManual();
+          resetForm();
+        };
+        reader.readAsDataURL(imageInput.files[0]);
+      } else {
+        manual[editIndex] = { ...manual[editIndex], title, instruction };
+        renderManual();
+        resetForm();
+      }
+    }
+
+    function deleteInstruction(idx) {
+      if (locked) return;
+      manual.splice(idx, 1);
+      renderManual();
+      resetForm();
+    }
+
+    function moveInstruction(idx, direction) {
+      if (locked) return;
+      const newIndex = idx + direction;
+      if (newIndex < 0 || newIndex >= manual.length) return;
+      const temp = manual[idx];
+      manual[idx] = manual[newIndex];
+      manual[newIndex] = temp;
+      renderManual();
+    }
+
+    function saveAndLockManual() {
+      if (!manual.length) return alert('Manual is empty!');
+      let name = manualNameInput.value.trim();
+      if (!name) {
+        alert('Please enter a manual name.');
+        manualNameInput.focus();
+        return;
+      }
+      // Check for duplicate name (except current)
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('manual_'));
+      for (const k of keys) {
+        if (k !== 'manual_' + currentManualName && localStorage.getItem(k)) {
+          try {
+            const arr = JSON.parse(localStorage.getItem(k));
+            if (arr && arr.manualName === name) {
+              alert('A manual with this name already exists. Please choose another name.');
+              return;
+            }
+          } catch {}
+        }
+      }
+      currentManualName = name;
+      // Save manual with name
+      const manualToSave = manual.map(i => ({...i}));
+      manualToSave.manualName = name;
+      localStorage.setItem('manual_' + name, JSON.stringify(manualToSave));
+      setFormLock(true);
+      updateManualDropdown();
+      alert('Manual saved and locked!');
+    }
+
+    function openManual(name) {
+      const data = localStorage.getItem('manual_' + name);
+      if (!data) return alert('Manual not found!');
+      let arr = JSON.parse(data);
+      if (Array.isArray(arr)) {
+        manual = arr;
+        manualNameInput.value = arr.manualName || name;
+        currentManualName = arr.manualName || name;
+      } else {
+        manual = [];
+        manualNameInput.value = name;
+        currentManualName = name;
+      }
+      setFormLock(false);
+      mainPage.style.display = 'none';
+      manualForm.style.display = '';
+      manualList.style.display = '';
+      renderManual();
+      resetForm();
+    }
+
+    function newManual() {
+      manual = [];
+      currentManualName = null;
+      manualNameInput.value = '';
+      setFormLock(false);
+      mainPage.style.display = 'none';
+      manualForm.style.display = '';
+      manualList.style.display = '';
+      renderManual();
+      resetForm();
+    }
+
+    function showMainPage() {
+      mainPage.style.display = '';
+      manualForm.style.display = 'none';
+      manualList.style.display = 'none';
+      manualView.style.display = 'none'; // Ensure view page is hidden
+      currentManualName = null;
+      manual = [];
+      setFormLock(false);
+      updateManualDropdown();
+    }
+
+    function showManualView(name) {
+      const data = localStorage.getItem('manual_' + name);
+      if (!data) return alert('Manual not found!');
+      let arr = JSON.parse(data);
+      let manualArr, manualName;
+      if (Array.isArray(arr)) {
+        manualArr = arr;
+        manualName = arr.manualName || name;
+      } else {
+        manualArr = [];
+        manualName = name;
+      }
+      manualViewName.textContent = manualName;
+      manualViewList.innerHTML = '';
+      if (manualArr.length === 0) {
+        manualViewList.innerHTML = '<div style="color:#888;">No instructions in this manual.</div>';
+      } else {
+        manualArr.forEach((item, idx) => {
+          const div = document.createElement('div');
+          div.className = 'manual-view-step';
+          // Step number
+          const stepNum = document.createElement('div');
+          stepNum.className = 'manual-view-step-number';
+          stepNum.textContent = idx + 1;
+          div.appendChild(stepNum);
+          // Content
+          const content = document.createElement('div');
+          content.innerHTML = `<div class=\"title\">${item.title}</div><div class=\"instruction-text\">${item.instruction}</div>`;
+          content.style.marginLeft = '16px';
+          div.appendChild(content);
+          if (item.image) {
+            const img = document.createElement('img');
+            img.src = item.image;
+            img.alt = 'Instruction Image';
+            img.onclick = function() {
+              manualViewModalImg.src = item.image;
+              manualViewModal.style.display = '';
+            };
+            img.style.marginLeft = '16px';
+            div.appendChild(img);
+          }
+          manualViewList.appendChild(div);
+        });
+      }
+      mainPage.style.display = 'none';
+      manualForm.style.display = 'none';
+      manualList.style.display = 'none';
+      manualView.style.display = '';
+    }
+    manualViewModal.onclick = function() {
+      manualViewModal.style.display = 'none';
+      manualViewModalImg.src = '';
+    };
+
+    openManualBtn.onclick = function() {
+      const val = manualSelect.value;
+      if (!val) return;
+      const name = val.replace('manual_', '');
+      currentManualName = name;
+      showManualView(name);
+    };
+    newManualBtn.onclick = newManual;
+    saveLockBtn.onclick = saveAndLockManual;
+    addBtn.onclick = addInstruction;
+    updateBtn.onclick = updateInstruction;
+    cancelEditBtn.onclick = resetForm;
+    backBtn.onclick = showMainPage;
+    manualViewGear.onclick = function() {
+      // Go to edit mode for the current manual
+      openManual(currentManualName);
+      manualView.style.display = 'none';
+    };
+    manualViewBackBtn.onclick = showMainPage;
+    deleteManualBtn.onclick = function() {
+      if (!currentManualName) return;
+      if (confirm('Are you sure you want to delete this manual? This action cannot be undone.')) {
+        localStorage.removeItem('manual_' + currentManualName);
+        showMainPage();
+        updateManualDropdown();
+      }
+    };
+
+    // Allow unlocking for editing by returning to main page
+    window.showMainPage = showMainPage;
+
+    // Initial load
+    showMainPage();
+  </script>
+</body>
+</html>
