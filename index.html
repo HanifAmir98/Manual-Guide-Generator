@@ -134,6 +134,7 @@
     <label for="manualSelect"><b>Select Manual:</b></label>
     <select id="manualSelect" style="width:70%;margin:0 8px 16px 8px;"></select>
     <button id="openManualBtn">Open</button>
+    <button id="exportPdfBtn">Export as PDF</button>
     <button id="newManualBtn">New Manual</button>
   </div>
   <div class="manual-form" id="manualForm" style="display:none;">
@@ -166,6 +167,7 @@
   </div>
   <div id="manualViewModal" class="manual-view-modal" style="display:none;"><img id="manualViewModalImg" src="" alt="Manual Zoom" /></div>
   <div class="manual-list" id="manualList" style="display:none;"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     let manual = [];
     let editIndex = null;
@@ -195,6 +197,7 @@
     const manualViewModal = document.getElementById('manualViewModal');
     const manualViewModalImg = document.getElementById('manualViewModalImg');
     const deleteManualBtn = document.getElementById('deleteManualBtn');
+    const exportPdfBtn = document.getElementById('exportPdfBtn');
 
     function updateManualDropdown() {
       manualSelect.innerHTML = '';
@@ -515,6 +518,44 @@
         showMainPage();
         updateManualDropdown();
       }
+    };
+    exportPdfBtn.onclick = function() {
+      if (!currentManualName) {
+        alert('No manual is currently open.');
+        return;
+      }
+      const data = localStorage.getItem('manual_' + currentManualName);
+      if (!data) {
+        alert('Manual not found!');
+        return;
+      }
+      let arr = JSON.parse(data);
+      let manualArr, manualName;
+      if (Array.isArray(arr)) {
+        manualArr = arr;
+        manualName = arr.manualName || currentManualName;
+      } else {
+        manualArr = [];
+        manualName = currentManualName;
+      }
+      const doc = new window.jspdf.jsPDF();
+      let y = 20;
+      doc.setFontSize(18);
+      doc.text(manualName, 10, y);
+      y += 10;
+      doc.setFontSize(12);
+      manualArr.forEach((item, idx) => {
+        doc.text(`${idx + 1}. ${item.title}`, 10, y);
+        y += 7;
+        doc.text(item.instruction, 14, y);
+        y += 10;
+        // Images are not included in this simple export
+        if (y > 270) {
+          doc.addPage();
+          y = 20;
+        }
+      });
+      doc.save(`${manualName}.pdf`);
     };
 
     // Allow unlocking for editing by returning to main page
