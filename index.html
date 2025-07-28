@@ -4,6 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manual Guide Creator</title>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyCn3H-EwbtmtJcYdzSk4PHKR8lUHNFfk94",
+      authDomain: "manual-guide-9f885.firebaseapp.com",
+      projectId: "manual-guide-9f885",
+      storageBucket: "manual-guide-9f885.firebasestorage.app",
+      messagingSenderId: "1092842943798",
+      appId: "1:1092842943798:web:fee288eb86453ad16c6f97"
+    };
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
   <style>
     body { font-family: Arial, sans-serif; margin: 40px; background: #f9f9f9; }
     h1 { text-align: center; }
@@ -204,27 +221,29 @@
 
     function updateManualDropdown() {
       manualSelect.innerHTML = '';
-      // Get all manuals and parse their names
-      const keys = Object.keys(localStorage).filter(k => k.startsWith('manual_'));
-      const manuals = keys.map(k => {
-        try {
-          const arr = JSON.parse(localStorage.getItem(k));
-          return { key: k, name: arr && arr.manualName ? arr.manualName : k.replace('manual_', '') };
-        } catch { return { key: k, name: k.replace('manual_', '') }; }
-      });
-      if (manuals.length === 0) {
+      // Get all manuals from Firebase
+      db.collection('manuals').orderBy('timestamp', 'desc').get().then(snapshot => {
+        if (snapshot.empty) {
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = '-- No Manuals Saved --';
+          manualSelect.appendChild(opt);
+        } else {
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            const opt = document.createElement('option');
+            opt.value = doc.id;
+            opt.textContent = data.manualName || doc.id;
+            manualSelect.appendChild(opt);
+          });
+        }
+      }).catch(error => {
+        console.error('Error loading manuals:', error);
         const opt = document.createElement('option');
         opt.value = '';
-        opt.textContent = '-- No Manuals Saved --';
+        opt.textContent = '-- Error Loading Manuals --';
         manualSelect.appendChild(opt);
-      } else {
-        manuals.forEach(m => {
-          const opt = document.createElement('option');
-          opt.value = m.key;
-          opt.textContent = m.name;
-          manualSelect.appendChild(opt);
-        });
-      }
+      });
     }
 
     function renderManual() {
@@ -421,48 +440,57 @@
         manualNameInput.focus();
         return;
       }
+      
       // Check for duplicate name (except current)
-      const keys = Object.keys(localStorage).filter(k => k.startsWith('manual_'));
-      for (const k of keys) {
-        if (k !== 'manual_' + currentManualName && localStorage.getItem(k)) {
-          try {
-            const arr = JSON.parse(localStorage.getItem(k));
-            if (arr && arr.manualName === name) {
-              alert('A manual with this name already exists. Please choose another name.');
-              return;
-            }
-          } catch {}
+      db.collection('manuals').where('manualName', '==', name).get().then(snapshot => {
+        let duplicateExists = false;
+        snapshot.forEach(doc => {
+          if (doc.id !== currentManualName) {
+            duplicateExists = true;
+          }
+        });
+        
+        if (duplicateExists) {
+          alert('A manual with this name already exists. Please choose another name.');
+          return;
         }
-      }
-      currentManualName = name;
-      // Save manual with name
-      const manualToSave = manual.map(i => ({...i}));
-      manualToSave.manualName = name;
-      localStorage.setItem('manual_' + name, JSON.stringify(manualToSave));
-      setFormLock(true);
-      updateManualDropdown();
-      alert('Manual saved and locked!');
+        
+        // Save manual to Firebase
+        currentManualName = name;
+        const manualToSave = manual.map(i => ({...i}));
+        
+        db.collection('manuals').doc(name).set({
+          manual: manualToSave,
+          manualName: name,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+          setFormLock(true);
+          updateManualDropdown();
+          alert('Manual saved and locked!');
+        }).catch(error => {
+          console.error('Error saving manual:', error);
+          alert('Error saving manual. Please try again.');
+        });
+      });
     }
 
     function openManual(name) {
-      const data = localStorage.getItem('manual_' + name);
-      if (!data) return alert('Manual not found!');
-      let arr = JSON.parse(data);
-      if (Array.isArray(arr)) {
-        manual = arr;
-        manualNameInput.value = arr.manualName || name;
-        currentManualName = arr.manualName || name;
-      } else {
-        manual = [];
-        manualNameInput.value = name;
-        currentManualName = name;
-      }
-      setFormLock(false);
-      mainPage.style.display = 'none';
-      manualForm.style.display = '';
-      manualList.style.display = '';
-      renderManual();
-      resetForm();
+      db.collection('manuals').doc(name).get().then(doc => {
+        if (!doc.exists) return alert('Manual not found!');
+        const data = doc.data();
+        manual = data.manual || [];
+        manualNameInput.value = data.manualName || name;
+        currentManualName = data.manualName || name;
+        setFormLock(false);
+        mainPage.style.display = 'none';
+        manualForm.style.display = '';
+        manualList.style.display = '';
+        renderManual();
+        resetForm();
+      }).catch(error => {
+        console.error('Error loading manual:', error);
+        alert('Error loading manual. Please try again.');
+      });
     }
 
     function newManual() {
@@ -489,54 +517,54 @@
     }
 
     function showManualView(name) {
-      const data = localStorage.getItem('manual_' + name);
-      if (!data) return alert('Manual not found!');
-      let arr = JSON.parse(data);
-      let manualArr, manualName;
-      if (Array.isArray(arr)) {
-        manualArr = arr;
-        manualName = arr.manualName || name;
-      } else {
-        manualArr = [];
-        manualName = name;
-      }
-      manualViewName.textContent = manualName;
-      manualViewList.innerHTML = '';
-      if (manualArr.length === 0) {
-        manualViewList.innerHTML = '<div style="color:#888;">No instructions in this manual.</div>';
-      } else {
-        manualArr.forEach((item, idx) => {
-          const div = document.createElement('div');
-          div.className = 'manual-view-step';
-          // Step number
-          const stepNum = document.createElement('div');
-          stepNum.className = 'manual-view-step-number';
-          stepNum.textContent = idx + 1;
-          div.appendChild(stepNum);
-          // Content
-          const content = document.createElement('div');
-          content.innerHTML = `<div class=\"title\">${item.title}</div><div class=\"instruction-text\">${item.instruction}</div>`;
-          content.style.marginLeft = '16px';
-          div.appendChild(content);
-          if (item.image) {
-            const img = document.createElement('img');
-            img.src = item.image;
-            img.alt = 'Instruction Image';
-            img.onclick = function() {
-              manualViewModalImg.src = item.image;
-              manualViewModal.style.display = '';
-            };
-            img.style.marginLeft = '16px';
-            div.appendChild(img);
-          }
-          manualViewList.appendChild(div);
-        });
-      }
-      mainPage.style.display = 'none';
-      manualForm.style.display = 'none';
-      manualList.style.display = 'none';
-      manualView.style.display = '';
+      db.collection('manuals').doc(name).get().then(doc => {
+        if (!doc.exists) return alert('Manual not found!');
+        const data = doc.data();
+        let manualArr = data.manual || [];
+        let manualName = data.manualName || name;
+        
+        manualViewName.textContent = manualName;
+        manualViewList.innerHTML = '';
+        if (manualArr.length === 0) {
+          manualViewList.innerHTML = '<div style="color:#888;">No instructions in this manual.</div>';
+        } else {
+          manualArr.forEach((item, idx) => {
+            const div = document.createElement('div');
+            div.className = 'manual-view-step';
+            // Step number
+            const stepNum = document.createElement('div');
+            stepNum.className = 'manual-view-step-number';
+            stepNum.textContent = idx + 1;
+            div.appendChild(stepNum);
+            // Content
+            const content = document.createElement('div');
+            content.innerHTML = `<div class=\"title\">${item.title}</div><div class=\"instruction-text\">${item.instruction}</div>`;
+            content.style.marginLeft = '16px';
+            div.appendChild(content);
+            if (item.image) {
+              const img = document.createElement('img');
+              img.src = item.image;
+              img.alt = 'Instruction Image';
+              img.onclick = function() {
+                manualViewModalImg.src = item.image;
+                manualViewModal.style.display = '';
+              };
+              img.style.marginLeft = '16px';
+              div.appendChild(img);
+            }
+            manualViewList.appendChild(div);
+          });
+        }
+        mainPage.style.display = 'none';
+        manualForm.style.display = 'none';
+        manualList.style.display = 'none';
+        manualView.style.display = '';
+      }).catch(error => {
+        console.error('Error loading manual for view:', error);
+        alert('Error loading manual. Please try again.');
+      });
     }
+    
     manualViewModal.onclick = function() {
       manualViewModal.style.display = 'none';
       manualViewModalImg.src = '';
@@ -545,9 +573,8 @@
     openManualBtn.onclick = function() {
       const val = manualSelect.value;
       if (!val) return;
-      const name = val.replace('manual_', '');
-      currentManualName = name;
-      showManualView(name);
+      currentManualName = val;
+      showManualView(val);
     };
     newManualBtn.onclick = newManual;
     saveLockBtn.onclick = saveAndLockManual;
@@ -564,9 +591,13 @@
     deleteManualBtn.onclick = function() {
       if (!currentManualName) return;
       if (confirm('Are you sure you want to delete this manual? This action cannot be undone.')) {
-        localStorage.removeItem('manual_' + currentManualName);
-        showMainPage();
-        updateManualDropdown();
+        db.collection('manuals').doc(currentManualName).delete().then(() => {
+          showMainPage();
+          updateManualDropdown();
+        }).catch(error => {
+          console.error('Error deleting manual:', error);
+          alert('Error deleting manual. Please try again.');
+        });
       }
     };
     document.getElementById('manualView').addEventListener('click', function(e) {
@@ -575,59 +606,59 @@
           alert('No manual is currently open.');
           return;
         }
-        const data = localStorage.getItem('manual_' + currentManualName);
-        if (!data) {
-          alert('Manual not found!');
-          return;
-        }
-        let arr = JSON.parse(data);
-        let manualArr, manualName;
-        if (Array.isArray(arr)) {
-          manualArr = arr;
-          manualName = arr.manualName || currentManualName;
-        } else {
-          manualArr = [];
-          manualName = currentManualName;
-        }
-        const doc = new window.jspdf.jsPDF({format: 'a4', unit: 'mm'});
-        const pageWidth = 210; // A4 width in mm
-        const pageHeight = 297; // A4 height in mm
-        const marginLeft = 14;
-        const maxImgWidth = 100; // reduced max width
-        const maxImgHeight = 80; // reduced max height
-        let y = 20;
-        doc.setFontSize(18);
-        doc.text(manualName, marginLeft, y);
-        y += 10;
-        doc.setFontSize(12);
-        manualArr.forEach((item, idx) => {
-          doc.text(`${idx + 1}. ${item.title}`, marginLeft, y);
-          y += 7;
-          doc.text(item.instruction, marginLeft + 4, y);
+        
+        db.collection('manuals').doc(currentManualName).get().then(doc => {
+          if (!doc.exists) {
+            alert('Manual not found!');
+            return;
+          }
+          const data = doc.data();
+          let manualArr = data.manual || [];
+          let manualName = data.manualName || currentManualName;
+          
+          const doc_pdf = new window.jspdf.jsPDF({format: 'a4', unit: 'mm'});
+          const pageWidth = 210; // A4 width in mm
+          const pageHeight = 297; // A4 height in mm
+          const marginLeft = 14;
+          const maxImgWidth = 100; // reduced max width
+          const maxImgHeight = 80; // reduced max height
+          let y = 20;
+          doc_pdf.setFontSize(18);
+          doc_pdf.text(manualName, marginLeft, y);
           y += 10;
-          if (item.image) {
-            let imgProps = doc.getImageProperties(item.image);
-            let imgWidth = imgProps.width;
-            let imgHeight = imgProps.height;
-            // Scale to fit A4 width and max height, keep aspect ratio
-            let scale = Math.min(maxImgWidth / imgWidth, maxImgHeight / imgHeight, 1);
-            let pdfWidth = imgWidth * scale;
-            let pdfHeight = imgHeight * scale;
-            // Center image horizontally
-            let x = (pageWidth - pdfWidth) / 2;
-            if (y + pdfHeight > pageHeight - 20) {
-              doc.addPage();
+          doc_pdf.setFontSize(12);
+          manualArr.forEach((item, idx) => {
+            doc_pdf.text(`${idx + 1}. ${item.title}`, marginLeft, y);
+            y += 7;
+            doc_pdf.text(item.instruction, marginLeft + 4, y);
+            y += 10;
+            if (item.image) {
+              let imgProps = doc_pdf.getImageProperties(item.image);
+              let imgWidth = imgProps.width;
+              let imgHeight = imgProps.height;
+              // Scale to fit A4 width and max height, keep aspect ratio
+              let scale = Math.min(maxImgWidth / imgWidth, maxImgHeight / imgHeight, 1);
+              let pdfWidth = imgWidth * scale;
+              let pdfHeight = imgHeight * scale;
+              // Center image horizontally
+              let x = (pageWidth - pdfWidth) / 2;
+              if (y + pdfHeight > pageHeight - 20) {
+                doc_pdf.addPage();
+                y = 20;
+              }
+              doc_pdf.addImage(item.image, 'JPEG', x, y, pdfWidth, pdfHeight);
+              y += pdfHeight + 5;
+            }
+            if (y > pageHeight - 20) {
+              doc_pdf.addPage();
               y = 20;
             }
-            doc.addImage(item.image, 'JPEG', x, y, pdfWidth, pdfHeight);
-            y += pdfHeight + 5;
-          }
-          if (y > pageHeight - 20) {
-            doc.addPage();
-            y = 20;
-          }
+          });
+          doc_pdf.save(`${manualName}.pdf`);
+        }).catch(error => {
+          console.error('Error loading manual for PDF export:', error);
+          alert('Error loading manual for PDF export. Please try again.');
         });
-        doc.save(`${manualName}.pdf`);
       }
     });
 
