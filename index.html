@@ -241,6 +241,11 @@
     box-shadow: 0 6px 20px rgba(40,167,69,0.5) !important;
   }
   
+  #exportWordBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,120,212,0.5) !important;
+  }
+  
   #manualViewBackBtn:hover {
     background: #5a6268 !important;
     transform: translateY(-1px);
@@ -309,7 +314,8 @@
       }
       
       #manualViewEditBtn,
-      #exportPdfBtn {
+      #exportPdfBtn,
+      #exportWordBtn {
         width: 100% !important;
         margin-bottom: 12px !important;
       }
@@ -449,10 +455,11 @@
         <h1 id="manualViewName" style="margin:0;font-size:2.4em;font-weight:700;letter-spacing:1px;color:#1a237e;margin-bottom:8px;">📚 Manual Name</h1>
         <p style="color:#666;font-size:1.1em;margin:0;">Complete step-by-step guide with instructions and images</p>
       </div>
-      <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;">
-        <button id="manualViewEditBtn" style="background:linear-gradient(135deg,#ffc107 0%,#ffb300 100%);color:#333;padding:14px 28px;border-radius:10px;border:none;cursor:pointer;font-size:1.1em;font-weight:700;transition:all 0.3s;box-shadow:0 4px 16px rgba(255,193,7,0.4);">✏️ Edit Manual</button>
-        <button id="exportPdfBtn" style="background:linear-gradient(135deg,#28a745 0%,#20c997 100%);color:#fff;padding:14px 28px;border-radius:10px;border:none;cursor:pointer;font-size:1.1em;font-weight:700;transition:all 0.3s;box-shadow:0 4px 16px rgba(40,167,69,0.4);">📄 Export as PDF</button>
-      </div>
+          <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;">
+      <button id="manualViewEditBtn" style="background:linear-gradient(135deg,#ffc107 0%,#ffb300 100%);color:#333;padding:14px 28px;border-radius:10px;border:none;cursor:pointer;font-size:1.1em;font-weight:700;transition:all 0.3s;box-shadow:0 4px 16px rgba(255,193,7,0.4);">✏️ Edit Manual</button>
+      <button id="exportPdfBtn" style="background:linear-gradient(135deg,#28a745 0%,#20c997 100%);color:#fff;padding:14px 28px;border-radius:10px;border:none;cursor:pointer;font-size:1.1em;font-weight:700;transition:all 0.3s;box-shadow:0 4px 16px rgba(40,167,69,0.4);">📄 Export as PDF</button>
+      <button id="exportWordBtn" style="background:linear-gradient(135deg,#0078d4 0%,#106ebe 100%);color:#fff;padding:14px 28px;border-radius:10px;border:none;cursor:pointer;font-size:1.1em;font-weight:700;transition:all 0.3s;box-shadow:0 4px 16px rgba(0,120,212,0.4);">📝 Export as Word</button>
+    </div>
     </div>
     
     <div style="margin-bottom:32px;text-align:center;">
@@ -470,6 +477,7 @@
   <div id="manualViewModal" class="manual-view-modal" style="display:none;"><img id="manualViewModalImg" src="" alt="Manual Zoom" /></div>
   <div class="manual-list" id="manualList" style="display:none;"></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <script>
     let manual = [];
     let editIndex = null;
@@ -1375,6 +1383,103 @@
         } catch (error) {
           console.error('Error creating PDF:', error);
           alert('Error creating PDF. Please try again.');
+        }
+      }
+    });
+    
+    // Word export functionality
+    document.getElementById('manualView').addEventListener('click', function(e) {
+      if (e.target && e.target.id === 'exportWordBtn') {
+        if (!currentManualName) {
+          alert('No manual is currently open.');
+          return;
+        }
+        
+        // Get manual data from the current view
+        const manualViewName = document.getElementById('manualViewName');
+        const manualViewList = document.getElementById('manualViewList');
+        
+        if (!manualViewName || !manualViewList) {
+          alert('Manual view not properly loaded.');
+          return;
+        }
+        
+        const manualName = manualViewName.textContent.replace('📚 ', ''); // Remove emoji
+        const stepElements = manualViewList.querySelectorAll('.manual-view-step');
+        
+        if (stepElements.length === 0) {
+          alert('No instructions found in this manual.');
+          return;
+        }
+        
+        try {
+          // Create HTML content for Word document
+          let htmlContent = `
+            <html>
+            <head>
+              <meta charset="UTF-8">
+              <title>${manualName}</title>
+              <style>
+                body { font-family: Arial, sans-serif; margin: 40px; }
+                h1 { color: #1a237e; text-align: center; font-size: 24px; margin-bottom: 30px; }
+                h2 { color: #1976d2; font-size: 18px; margin-top: 25px; margin-bottom: 10px; }
+                p { font-size: 14px; line-height: 1.6; margin-bottom: 15px; }
+                img { max-width: 100%; height: auto; display: block; margin: 15px auto; }
+                .step { margin-bottom: 30px; }
+              </style>
+            </head>
+            <body>
+              <h1>${manualName}</h1>
+          `;
+          
+          // Process each step
+          stepElements.forEach((stepElement, idx) => {
+            const titleElement = stepElement.querySelector('.title');
+            const instructionElement = stepElement.querySelector('.instruction-text');
+            const imageElement = stepElement.querySelector('img');
+            
+            htmlContent += `<div class="step">`;
+            
+            // Add step number and title
+            if (titleElement) {
+              htmlContent += `<h2>${idx + 1}. ${titleElement.textContent}</h2>`;
+            }
+            
+            // Add instruction text
+            if (instructionElement) {
+              htmlContent += `<p>${instructionElement.textContent}</p>`;
+            }
+            
+            // Add image if present
+            if (imageElement && imageElement.src) {
+              htmlContent += `<img src="${imageElement.src}" alt="Step ${idx + 1} Image" />`;
+            }
+            
+            htmlContent += `</div>`;
+          });
+          
+          htmlContent += `
+            </body>
+            </html>
+          `;
+          
+          // Create blob and download as HTML (can be opened in Word)
+          const blob = new Blob([htmlContent], { type: 'text/html' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${manualName}.html`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          
+          // Show success message
+          alert(`Manual exported successfully as "${manualName}.html"!\n\nYou can open this file in Microsoft Word or any word processor to convert it to a Word document.`);
+          
+        } catch (error) {
+          console.error('Error creating Word document:', error);
+          alert('Error creating Word document. Please try again.');
         }
       }
     });
