@@ -1294,15 +1294,24 @@
           return;
         }
         
-        db.collection('manuals').doc(currentManualName).get().then(doc => {
-          if (!doc.exists) {
-            alert('Manual not found!');
-            return;
-          }
-          const data = doc.data();
-          let manualArr = data.manual || [];
-          let manualName = data.manualName || currentManualName;
-          
+        // Get manual data from the current view instead of Firebase
+        const manualViewName = document.getElementById('manualViewName');
+        const manualViewList = document.getElementById('manualViewList');
+        
+        if (!manualViewName || !manualViewList) {
+          alert('Manual view not properly loaded.');
+          return;
+        }
+        
+        const manualName = manualViewName.textContent.replace('📚 ', ''); // Remove emoji
+        const stepElements = manualViewList.querySelectorAll('.manual-view-step');
+        
+        if (stepElements.length === 0) {
+          alert('No instructions found in this manual.');
+          return;
+        }
+        
+        try {
           const doc_pdf = new window.jspdf.jsPDF({format: 'a4', unit: 'mm'});
           const pageWidth = 210; // A4 width in mm
           const pageHeight = 297; // A4 height in mm
@@ -1310,42 +1319,63 @@
           const maxImgWidth = 100; // reduced max width
           const maxImgHeight = 80; // reduced max height
           let y = 20;
+          
+          // Add title
           doc_pdf.setFontSize(18);
           doc_pdf.text(manualName, marginLeft, y);
           y += 10;
           doc_pdf.setFontSize(12);
-          manualArr.forEach((item, idx) => {
-            doc_pdf.text(`${idx + 1}. ${item.title}`, marginLeft, y);
-            y += 7;
-            doc_pdf.text(item.instruction, marginLeft + 4, y);
-            y += 10;
-            if (item.image) {
-              let imgProps = doc_pdf.getImageProperties(item.image);
-              let imgWidth = imgProps.width;
-              let imgHeight = imgProps.height;
-              // Scale to fit A4 width and max height, keep aspect ratio
-              let scale = Math.min(maxImgWidth / imgWidth, maxImgHeight / imgHeight, 1);
-              let pdfWidth = imgWidth * scale;
-              let pdfHeight = imgHeight * scale;
-              // Center image horizontally
-              let x = (pageWidth - pdfWidth) / 2;
-              if (y + pdfHeight > pageHeight - 20) {
-                doc_pdf.addPage();
-                y = 20;
-              }
-              doc_pdf.addImage(item.image, 'JPEG', x, y, pdfWidth, pdfHeight);
-              y += pdfHeight + 5;
+          
+          // Process each step
+          stepElements.forEach((stepElement, idx) => {
+            const titleElement = stepElement.querySelector('.title');
+            const instructionElement = stepElement.querySelector('.instruction-text');
+            const imageElement = stepElement.querySelector('img');
+            
+            if (titleElement) {
+              doc_pdf.text(`${idx + 1}. ${titleElement.textContent}`, marginLeft, y);
+              y += 7;
             }
+            
+            if (instructionElement) {
+              doc_pdf.text(instructionElement.textContent, marginLeft + 4, y);
+              y += 10;
+            }
+            
+            if (imageElement && imageElement.src) {
+              try {
+                let imgProps = doc_pdf.getImageProperties(imageElement.src);
+                let imgWidth = imgProps.width;
+                let imgHeight = imgProps.height;
+                // Scale to fit A4 width and max height, keep aspect ratio
+                let scale = Math.min(maxImgWidth / imgWidth, maxImgHeight / imgHeight, 1);
+                let pdfWidth = imgWidth * scale;
+                let pdfHeight = imgHeight * scale;
+                // Center image horizontally
+                let x = (pageWidth - pdfWidth) / 2;
+                if (y + pdfHeight > pageHeight - 20) {
+                  doc_pdf.addPage();
+                  y = 20;
+                }
+                doc_pdf.addImage(imageElement.src, 'JPEG', x, y, pdfWidth, pdfHeight);
+                y += pdfHeight + 5;
+              } catch (imgError) {
+                console.warn('Could not add image to PDF:', imgError);
+                // Continue without the image
+              }
+            }
+            
             if (y > pageHeight - 20) {
               doc_pdf.addPage();
               y = 20;
             }
           });
+          
           doc_pdf.save(`${manualName}.pdf`);
-        }).catch(error => {
-          console.error('Error loading manual for PDF export:', error);
-          alert('Error loading manual for PDF export. Please try again.');
-        });
+        } catch (error) {
+          console.error('Error creating PDF:', error);
+          alert('Error creating PDF. Please try again.');
+        }
       }
     });
 
