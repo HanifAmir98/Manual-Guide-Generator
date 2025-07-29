@@ -21,6 +21,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
   </script>
+  <link rel="stylesheet" href="https://uicdn.toast.com/tui-image-editor/latest/tui-image-editor.min.css">
   <style>
     body { font-family: Arial, sans-serif; margin: 40px; background: #f9f9f9; }
     h1 { text-align: center; }
@@ -333,7 +334,46 @@
         font-size: 1em !important;
       }
     }
+    #imageEditorModal {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      left: 0; top: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      align-items: center;
+      justify-content: center;
+    }
+    #imageEditorModal .editor-container {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      padding: 16px;
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow: auto;
+      position: relative;
+    }
+    #imageEditorModal .editor-actions {
+      text-align: right;
+      margin-top: 12px;
+    }
+    #imageEditorModal .editor-actions button {
+      margin-left: 8px;
+      padding: 8px 18px;
+      border-radius: 6px;
+      border: none;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #imageEditorModal .editor-actions .save {
+      background: #28a745; color: #fff;
+    }
+    #imageEditorModal .editor-actions .cancel {
+      background: #dc3545; color: #fff;
+    }
   </style>
+  <script src="https://uicdn.toast.com/tui-image-editor/latest/tui-image-editor.min.js"></script>
 </head>
 <body>
 
@@ -341,7 +381,7 @@
     <div style="text-align:center;margin-bottom:40px;">
       <h1 style="color:#1a237e;margin-bottom:8px;font-size:2.2em;font-weight:700;">📚 Manual Guide Creator</h1>
       <p style="color:#666;font-size:1.1em;margin:0;">Create, manage, and share your manuals with everyone</p>
-    </div>
+  </div>
     
     <div style="background:#f8f9ff;padding:32px;border-radius:12px;border:2px solid #e3f2fd;margin-bottom:32px;">
       <h2 style="color:#1976d2;margin:0 0 20px 0;font-size:1.4em;font-weight:600;">📖 Open Existing Manual</h2>
@@ -353,22 +393,22 @@
         <button id="refreshBtn" style="background:#17a2b8;color:#fff;border:none;padding:12px 16px;border-radius:8px;cursor:pointer;font-size:1em;font-weight:600;transition:all 0.2s;box-shadow:0 2px 8px rgba(23,162,184,0.3);" title="Refresh Manuals">🔄 Refresh</button>
         <button id="openManualBtn" style="background:#28a745;color:#fff;border:none;padding:12px 24px;border-radius:8px;cursor:pointer;font-size:1em;font-weight:600;transition:all 0.2s;box-shadow:0 2px 8px rgba(40,167,69,0.3);">📖 Open Manual</button>
       </div>
-    </div>
+      </div>
     
     <div style="text-align:center;">
       <div style="margin-bottom:16px;">
         <span style="color:#666;font-size:0.9em;">or</span>
-      </div>
-      <button id="newManualBtn" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border:none;padding:16px 32px;border-radius:12px;cursor:pointer;font-size:1.2em;font-weight:700;transition:all 0.3s;box-shadow:0 4px 16px rgba(102,126,234,0.4);">✨ Create New Manual</button>
     </div>
+      <button id="newManualBtn" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border:none;padding:16px 32px;border-radius:12px;cursor:pointer;font-size:1.2em;font-weight:700;transition:all 0.3s;box-shadow:0 4px 16px rgba(102,126,234,0.4);">✨ Create New Manual</button>
+  </div>
     
     <div style="margin-top:40px;padding:20px;background:#f5f5f5;border-radius:8px;text-align:center;">
       <p style="margin:0;color:#666;font-size:0.9em;">
         💡 <strong>Tip:</strong> All manuals are saved to the cloud and shared with everyone. 
         Use the refresh button to see the latest manuals from other users.
       </p>
-    </div>
-  </div>
+      </div>
+      </div>
   <div class="manual-form" id="manualForm" style="display:none;max-width:800px;margin:40px auto;background:#fff;padding:40px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.1);">
     <div style="text-align:center;margin-bottom:40px;">
       <h1 style="color:#1a237e;margin-bottom:8px;font-size:2.2em;font-weight:700;">✏️ Edit Manual</h1>
@@ -430,6 +470,21 @@
               font-weight:bold;
               box-shadow:0 2px 4px rgba(0,0,0,0.2);
             " title="Remove Image">×</button>
+            <button id="editImageBtn" style="
+              position:absolute;
+              top:8px;
+              left:8px;
+              background:#007bff;
+              color:#fff;
+              border:none;
+              width:28px;
+              height:28px;
+              border-radius:50%;
+              cursor:pointer;
+              font-size:16px;
+              font-weight:bold;
+              box-shadow:0 2px 4px rgba(0,123,255,0.2);
+            " title="Edit Image">✎</button>
           </div>
         </div>
       </div>
@@ -513,6 +568,12 @@
     const imagePreview = document.getElementById('imagePreview');
     const imagePreviewContainer = document.getElementById('imagePreviewContainer');
     const removeImageBtn = document.getElementById('removeImageBtn');
+    const editImageBtn = document.getElementById('editImageBtn');
+    const imageEditorModal = document.getElementById('imageEditorModal');
+    const imageEditorSaveBtn = document.getElementById('imageEditorSaveBtn');
+    const imageEditorCancelBtn = document.getElementById('imageEditorCancelBtn');
+    let tuiEditor = null;
+    let lastImageDataUrl = null;
 
     function updateManualDropdown() {
       manualSelect.innerHTML = '';
@@ -622,18 +683,18 @@
         // Update the dropdown
         manualSelect.innerHTML = '';
         if (snapshot.empty) {
-          const opt = document.createElement('option');
-          opt.value = '';
-          opt.textContent = '-- No Manuals Saved --';
-          manualSelect.appendChild(opt);
-        } else {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '-- No Manuals Saved --';
+        manualSelect.appendChild(opt);
+      } else {
           snapshot.forEach(doc => {
             const data = doc.data();
-            const opt = document.createElement('option');
+          const opt = document.createElement('option');
             opt.value = doc.id;
             opt.textContent = data.manualName || doc.id;
-            manualSelect.appendChild(opt);
-          });
+          manualSelect.appendChild(opt);
+        });
         }
       }).catch(error => {
         console.error('Error refreshing manuals:', error);
@@ -949,13 +1010,13 @@
         
         if (duplicateExists) {
           document.body.removeChild(savingPrompt);
-          alert('A manual with this name already exists. Please choose another name.');
-          return;
-        }
+              alert('A manual with this name already exists. Please choose another name.');
+              return;
+            }
         
         // Save manual to Firebase
-        currentManualName = name;
-        const manualToSave = manual.map(i => ({...i}));
+      currentManualName = name;
+      const manualToSave = manual.map(i => ({...i}));
         
         db.collection('manuals').doc(name).set({
           manual: manualToSave,
@@ -998,8 +1059,8 @@
             </div>
           `;
           
-          setFormLock(true);
-          updateManualDropdown();
+      setFormLock(true);
+      updateManualDropdown();
         }).catch(error => {
           console.error('Error saving manual:', error);
           // Update prompt to show error
@@ -1059,12 +1120,12 @@
         manual = data.manual || [];
         manualNameInput.value = data.manualName || name;
         currentManualName = data.manualName || name;
-        setFormLock(false);
-        mainPage.style.display = 'none';
-        manualForm.style.display = '';
-        manualList.style.display = '';
-        renderManual();
-        resetForm();
+      setFormLock(false);
+      mainPage.style.display = 'none';
+      manualForm.style.display = '';
+      manualList.style.display = '';
+      renderManual();
+      resetForm();
       }).catch(error => {
         console.error('Error loading manual:', error);
         alert('Error loading manual. Please try again.');
@@ -1101,42 +1162,42 @@
         let manualArr = data.manual || [];
         let manualName = data.manualName || name;
         
-        manualViewName.textContent = manualName;
-        manualViewList.innerHTML = '';
-        if (manualArr.length === 0) {
-          manualViewList.innerHTML = '<div style="color:#888;">No instructions in this manual.</div>';
-        } else {
-          manualArr.forEach((item, idx) => {
-            const div = document.createElement('div');
-            div.className = 'manual-view-step';
-            // Step number
-            const stepNum = document.createElement('div');
-            stepNum.className = 'manual-view-step-number';
-            stepNum.textContent = idx + 1;
-            div.appendChild(stepNum);
-            // Content
-            const content = document.createElement('div');
-            content.innerHTML = `<div class=\"title\">${item.title}</div><div class=\"instruction-text\">${item.instruction}</div>`;
-            content.style.marginLeft = '16px';
-            div.appendChild(content);
-            if (item.image) {
-              const img = document.createElement('img');
-              img.src = item.image;
-              img.alt = 'Instruction Image';
-              img.onclick = function() {
-                manualViewModalImg.src = item.image;
-                manualViewModal.style.display = '';
-              };
-              img.style.marginLeft = '16px';
-              div.appendChild(img);
-            }
-            manualViewList.appendChild(div);
-          });
-        }
-        mainPage.style.display = 'none';
-        manualForm.style.display = 'none';
-        manualList.style.display = 'none';
-        manualView.style.display = '';
+      manualViewName.textContent = manualName;
+      manualViewList.innerHTML = '';
+      if (manualArr.length === 0) {
+        manualViewList.innerHTML = '<div style="color:#888;">No instructions in this manual.</div>';
+      } else {
+        manualArr.forEach((item, idx) => {
+          const div = document.createElement('div');
+          div.className = 'manual-view-step';
+          // Step number
+          const stepNum = document.createElement('div');
+          stepNum.className = 'manual-view-step-number';
+          stepNum.textContent = idx + 1;
+          div.appendChild(stepNum);
+          // Content
+          const content = document.createElement('div');
+          content.innerHTML = `<div class=\"title\">${item.title}</div><div class=\"instruction-text\">${item.instruction}</div>`;
+          content.style.marginLeft = '16px';
+          div.appendChild(content);
+          if (item.image) {
+            const img = document.createElement('img');
+            img.src = item.image;
+            img.alt = 'Instruction Image';
+            img.onclick = function() {
+              manualViewModalImg.src = item.image;
+              manualViewModal.style.display = '';
+            };
+            img.style.marginLeft = '16px';
+            div.appendChild(img);
+          }
+          manualViewList.appendChild(div);
+        });
+      }
+      mainPage.style.display = 'none';
+      manualForm.style.display = 'none';
+      manualList.style.display = 'none';
+      manualView.style.display = '';
       }).catch(error => {
         console.error('Error loading manual for view:', error);
         alert('Error loading manual. Please try again.');
@@ -1246,8 +1307,8 @@
             </div>
           `;
           
-          showMainPage();
-          updateManualDropdown();
+        showMainPage();
+        updateManualDropdown();
         }).catch(error => {
           console.error('Error deleting manual:', error);
           // Update prompt to show error
@@ -1321,17 +1382,17 @@
         
         try {
           const doc_pdf = new window.jspdf.jsPDF({format: 'a4', unit: 'mm'});
-          const pageWidth = 210; // A4 width in mm
-          const pageHeight = 297; // A4 height in mm
-          const marginLeft = 14;
-          const maxImgWidth = 100; // reduced max width
-          const maxImgHeight = 80; // reduced max height
-          let y = 20;
+        const pageWidth = 210; // A4 width in mm
+        const pageHeight = 297; // A4 height in mm
+        const marginLeft = 14;
+        const maxImgWidth = 100; // reduced max width
+        const maxImgHeight = 80; // reduced max height
+        let y = 20;
           
           // Add title
           doc_pdf.setFontSize(18);
           doc_pdf.text(manualName, marginLeft, y);
-          y += 10;
+        y += 10;
           doc_pdf.setFontSize(12);
           
           // Process each step
@@ -1342,42 +1403,42 @@
             
             if (titleElement) {
               doc_pdf.text(`${idx + 1}. ${titleElement.textContent}`, marginLeft, y);
-              y += 7;
+          y += 7;
             }
             
             if (instructionElement) {
               doc_pdf.text(instructionElement.textContent, marginLeft + 4, y);
-              y += 10;
+          y += 10;
             }
             
             if (imageElement && imageElement.src) {
               try {
                 let imgProps = doc_pdf.getImageProperties(imageElement.src);
-                let imgWidth = imgProps.width;
-                let imgHeight = imgProps.height;
-                // Scale to fit A4 width and max height, keep aspect ratio
-                let scale = Math.min(maxImgWidth / imgWidth, maxImgHeight / imgHeight, 1);
-                let pdfWidth = imgWidth * scale;
-                let pdfHeight = imgHeight * scale;
-                // Center image horizontally
-                let x = (pageWidth - pdfWidth) / 2;
-                if (y + pdfHeight > pageHeight - 20) {
+            let imgWidth = imgProps.width;
+            let imgHeight = imgProps.height;
+            // Scale to fit A4 width and max height, keep aspect ratio
+            let scale = Math.min(maxImgWidth / imgWidth, maxImgHeight / imgHeight, 1);
+            let pdfWidth = imgWidth * scale;
+            let pdfHeight = imgHeight * scale;
+            // Center image horizontally
+            let x = (pageWidth - pdfWidth) / 2;
+            if (y + pdfHeight > pageHeight - 20) {
                   doc_pdf.addPage();
-                  y = 20;
-                }
+              y = 20;
+            }
                 doc_pdf.addImage(imageElement.src, 'JPEG', x, y, pdfWidth, pdfHeight);
-                y += pdfHeight + 5;
+            y += pdfHeight + 5;
               } catch (imgError) {
                 console.warn('Could not add image to PDF:', imgError);
                 // Continue without the image
-              }
+          }
             }
             
-            if (y > pageHeight - 20) {
+          if (y > pageHeight - 20) {
               doc_pdf.addPage();
-              y = 20;
-            }
-          });
+            y = 20;
+          }
+        });
           
           doc_pdf.save(`${manualName}.pdf`);
         } catch (error) {
@@ -1484,6 +1545,53 @@
       }
     });
 
+    editImageBtn.addEventListener('click', function() {
+      // Open modal and initialize editor with current image
+      imageEditorModal.style.display = 'flex';
+      if (tuiEditor) {
+        tuiEditor.destroy();
+      }
+      tuiEditor = new window.tui.ImageEditor(document.getElementById('tui-image-editor-container'), {
+        includeUI: {
+          menu: ['crop', 'draw', 'shape', 'icon'],
+          initMenu: 'draw',
+          uiSize: { width: 700, height: 500 },
+          menuBarPosition: 'bottom'
+        },
+        cssMaxWidth: 600,
+        cssMaxHeight: 400,
+        selectionStyle: {
+          cornerSize: 20,
+          rotatingPointOffset: 70
+        }
+      });
+      // Load current image
+      if (imagePreview.src) {
+        tuiEditor.loadImageFromURL(imagePreview.src, 'EditImage').then(() => {
+          tuiEditor.clearUndoStack();
+        });
+      }
+    });
+
+    imageEditorCancelBtn.addEventListener('click', function() {
+      if (tuiEditor) {
+        tuiEditor.destroy();
+        tuiEditor = null;
+      }
+      imageEditorModal.style.display = 'none';
+    });
+
+    imageEditorSaveBtn.addEventListener('click', function() {
+      if (tuiEditor) {
+        const dataUrl = tuiEditor.toDataURL();
+        showImagePreview(dataUrl);
+        lastImageDataUrl = dataUrl;
+        tuiEditor.destroy();
+        tuiEditor = null;
+      }
+      imageEditorModal.style.display = 'none';
+    });
+
     // Allow unlocking for editing by returning to main page
     window.showMainPage = showMainPage;
 
@@ -1495,5 +1603,4 @@
     }, 500); // Small delay to ensure page is fully loaded
   </script>
 </body>
-</html>
 </html>
